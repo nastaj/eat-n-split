@@ -23,8 +23,8 @@ const initialFriends = [
 
 export default function App() {
   const [friends, setFriends] = useState([...initialFriends]);
-
   const [selected, setSelected] = useState(null);
+  const [isShown, setIsShown] = useState(false);
 
   function handleAddFriend(newFriend) {
     setFriends((friends) => [...friends, newFriend]);
@@ -37,17 +37,32 @@ export default function App() {
         onAddFriend={handleAddFriend}
         selected={selected}
         setSelected={setSelected}
+        isShown={isShown}
+        setIsShown={setIsShown}
       />
-      <BillForm selected={selected} friends={friends} setFriends={setFriends} />
+      {selected && (
+        <BillForm
+          selected={selected}
+          setSelected={setSelected}
+          friends={friends}
+          setFriends={setFriends}
+        />
+      )}
     </div>
   );
 }
 
-function Sidebar({ friends, onAddFriend, selected, setSelected }) {
-  const [isShown, setIsShown] = useState(false);
-
+function Sidebar({
+  friends,
+  onAddFriend,
+  selected,
+  setSelected,
+  isShown,
+  setIsShown,
+}) {
   function toggleForm() {
     setIsShown(!isShown);
+    setSelected(null);
   }
 
   return (
@@ -56,8 +71,16 @@ function Sidebar({ friends, onAddFriend, selected, setSelected }) {
         friends={friends}
         selected={selected}
         setSelected={setSelected}
+        isShown={isShown}
+        setIsShown={setIsShown}
       />
-      <FriendForm onAddFriend={onAddFriend} isShown={isShown} />
+      {isShown && (
+        <FriendForm
+          onAddFriend={onAddFriend}
+          isShown={isShown}
+          setIsShown={setIsShown}
+        />
+      )}
       <button className="button" onClick={toggleForm}>
         {isShown ? "Close" : "Add friend"}
       </button>
@@ -66,7 +89,7 @@ function Sidebar({ friends, onAddFriend, selected, setSelected }) {
   );
 }
 
-function FriendList({ friends, selected, setSelected }) {
+function FriendList({ friends, selected, setSelected, isShown, setIsShown }) {
   return (
     <ul>
       {friends.map((friend) => (
@@ -75,17 +98,20 @@ function FriendList({ friends, selected, setSelected }) {
           key={friend.id}
           selected={selected}
           setSelected={setSelected}
+          isShown={isShown}
+          setIsShown={setIsShown}
         />
       ))}
     </ul>
   );
 }
 
-function Friend({ friend, selected, setSelected }) {
+function Friend({ friend, selected, setSelected, isShown, setIsShown }) {
   const isSelected = selected === friend.id;
 
   function handleSelected() {
     setSelected(isSelected ? null : friend.id);
+    isShown && setIsShown(!isShown);
   }
 
   return (
@@ -112,19 +138,19 @@ function Friend({ friend, selected, setSelected }) {
   );
 }
 
-function FriendForm({ onAddFriend, isShown }) {
+function FriendForm({ onAddFriend, isShown, setIsShown }) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
-
-  if (!isShown) return;
 
   function handleNewFriend(e) {
     e.preventDefault();
 
+    if (!name || !url) return;
+
     const newFriend = {
       id: Date.now(),
       name: name,
-      image: url,
+      image: `${url}=${Date.now()}`,
       balance: 0,
     };
 
@@ -132,6 +158,7 @@ function FriendForm({ onAddFriend, isShown }) {
 
     setName("");
     setUrl("");
+    setIsShown(!isShown);
   }
 
   return (
@@ -157,13 +184,11 @@ function FriendForm({ onAddFriend, isShown }) {
   );
 }
 
-function BillForm({ selected, friends, setFriends }) {
+function BillForm({ selected, setSelected, friends, setFriends }) {
   const [bill, setBill] = useState("");
   const [expenseOwn, setExpenseOwn] = useState("");
   const [expenseFriend, setExpenseFriend] = useState("");
   const [whoPays, setWhoPays] = useState("You");
-
-  if (!selected) return;
 
   const friend = friends.find((friend) => friend.id === selected);
 
@@ -180,12 +205,14 @@ function BillForm({ selected, friends, setFriends }) {
   function handleSplitBill(e) {
     e.preventDefault();
 
+    if (!bill || !expenseOwn) return;
+
     setFriends((friends) =>
       friends.map((friend) =>
         friend.id === selected
           ? whoPays === "You"
-            ? { ...friend, balance: (friend.balance += expenseFriend) }
-            : { ...friend, balance: (friend.balance -= expenseOwn) }
+            ? { ...friend, balance: friend.balance + expenseFriend }
+            : { ...friend, balance: friend.balance - expenseOwn }
           : friend
       )
     );
@@ -194,6 +221,7 @@ function BillForm({ selected, friends, setFriends }) {
     setExpenseOwn("");
     setExpenseFriend("");
     setWhoPays("You");
+    setSelected(null);
   }
 
   return (
